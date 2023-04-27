@@ -1,0 +1,143 @@
+---
+- name: Escalate privilege of {{ ans }} on {{ ansible_hostname }}
+  hosts: localhost
+  vars:
+    - ans: julio
+  tasks:
+    - name: Escalate privilege of {{ ans }} on {{ ansible_hostname }}
+      lineinfile:
+       line: '{{ ans }} ALL=(ALL) NOPASSWD: ALL' 
+       path: /etc/sudoers.d/{{ ans }}
+       create: true
+       state: present
+   
+    - name: Generate encrypted password
+      debug:
+        msg: "{{ '{{ passw }}' | password_hash('sha512', 'secretsalt') }}"
+      register: pass_encrypt
+    - debug:
+        var: pass_encrypt.msg
+      tags: password
+  
+    - name: Create {{ ans }} and generate private and public keys on {{ ansible_hostname }}
+      user:
+          name: "{{ ans }}"
+          password: "{{ pass_encrypt.msg }}"
+          state: present
+          generate_ssh_key: yes
+      register: check_user
+    
+    - name: Create local directory to host {{ ans }} public key
+      file:
+        path: "{{ ans }}"
+        state: directory
+
+    #Failling for multiusers
+    - name: Copy {{ ans }} public key to ./{{ ans }} directory
+      copy: 
+        src: /home/{{ ans }}/.ssh/id_rsa.pub  
+        dest: "{{ ans }}/id_rsa.pub"
+      ignore_errors: true
+      register: copy_key
+    
+    - name: Copy {{ ans }} public key to ./{{ ans }} directory if previous play fails
+      shell: cat /home/{{ ans }}/.ssh/id_rsa.pub > {{ ans }}/id_rsa.pub
+      when: copy_key.failed == true 
+
+
+- name: Setting up environment between control node and managed nodes
+  hosts: all
+  vars: 
+    - ans: julio
+    - py: python3
+  vars_prompt:
+    - name: passw
+      prompt: Please type {{ ans }} password
+  tasks:
+
+    - name: Check whether {{ py }} is installed on {{ ansible_hostname }}, install it if not.
+      dnf:
+        name: "{{ py }}"
+      when: ansible_python_version is not defined
+
+
+    - name: Generate encrypted password
+      debug:
+        msg: "{{ '{{ passw }}' | password_hash('sha512', 'secretsalt') }}"
+      register: pass_encrypt
+    - debug:
+        var: pass_encrypt.msg
+
+    - name: Preparing getent to check is user already exists
+      getent:
+        database: passwd
+        key: "{{ ans }}"
+      ignore_errors: yes
+    
+    - name: Create {{ ans }} on {{ ansible_hostname }}
+      user:
+          name: "{{ ans }}"
+          password: "{{ pass_encrypt.msg }}"
+          state: present
+      when: ansible_facts.getent_passwd[ans] is not defined #{{ ans }} or ["{{ ans }}"] would work too albeit with a warning
+      
+    - name: Escalate privilege of {{ ans }}
+      copy:
+         content: "{{ ans }} ALL=(ALL) NOPASSWD: ALL"
+         dest: /etc/sudoers.d/sudoall
+
+    
+      #- name: Another dumb way to deploy the hosts on /etc/hosts. Hosts are defined in files/hot 
+      #lineinfile:
+      #   path: /etc/hosts
+      #   line: "{{ lookup('file', '/tmp/hot') }}"
+        
+    - name: Deploy hosts on /etc/hosts with template file
+      template:
+          src: files/var.j2
+          dest: /etc/hosts
+          #ignore_errors: true
+      when: hostvars[item]['ansible_default_ipv4']['address'] is not defined
+      loop: "{{ groups.all }}"
+    
+    - name: Append new hosts to /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        line: |
+          {{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ hostvars[item]["ansible_fqdn"] }} {{ hostvars[item]['ansible_hostname'] }}
+      when: hostvars[item]['ansible_default_ipv4']['address'] is not defined
+      loop: "{{ groups.all }}"
+
+    - name: Disable Password Authentication
+      lineinfile:
+           path: /etc/ssh/sshd_config
+           regexp: '^PasswordAuthentication yes'
+           line: "PasswordAuthentication no"
+
+    - name: Disable SSH Root Login
+      lineinfile:
+           path: /etc/ssh/sshd_config
+           regexp: '^PermitRootLogin yes'
+           line: 'PermitRootLogin no'
+      notify: restart_sshd
+
+    - name: Deploy ssh key to managed hosts
+      authorized_key:
+          user: "{{ ans }}"
+          state: present
+          key: "{{ lookup('file', '/home/{{ ans }}/id_rsa.pub') }}"
+      ignore_errors: yes
+      register: rsa_key
+  
+    - name: Deploy ssh key to managed hosts if previous play fails
+      authorized_key:
+          user: "{{ ans }}"
+          state: present
+          key: "{{ lookup('file', '{{ ans }}/id_rsa.pub') }}"
+      when: rsa_key.failed == true
+
+  handlers:
+    - name: restart_sshd
+      service:
+        name: sshd
+        state: restarted
