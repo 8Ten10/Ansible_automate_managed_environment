@@ -1,4 +1,4 @@
-# Ansible_automate_managed_environment
+# Ansible Automate Managed Environment
 
 This is a pretty simple playbook to set up an environment between a control node and managed nodes.
 
