@@ -1,0 +1,27 @@
+---
+- name:
+  hosts: monitor
+  vars:
+    - ici: teka
+  tasks:
+    - name: ijoasd
+      user:
+        name: solo
+        state: present
+      register: tony
+    
+    - name: getent
+      getent:
+        database: passwd
+        key: teka
+        fail_key: false
+
+    - name: ijoasd
+      debug:
+        msg: ici cest " ansible_facts.getent_passwd"
+      when: getent_passwd.{{ teka }} is defined
+
+        
+        #- name: recalling
+        #shell: echo " pam pam ppppppppppppppam"
+        # when: tony.rc != 0

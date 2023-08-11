@@ -1,0 +1,28 @@
+192.168.214.60 ansible5.example.com ansible5
+192.168.214.10 control.example.com control
+192.168.214.20 ansible1.example.com ansible1
+192.168.214.30 ansible2.example.com ansible2
+192.168.214.40 ansible3.example.com ansible3
+192.168.214.50 ansible4.example.com ansible4
+192.168.214.60 ansible5.example.com ansible5
+
+192.168.214.10 control.example.com control
+192.168.214.20 ansible1.example.com ansible1
+192.168.214.30 ansible2.example.com ansible2
+192.168.214.40 ansible3.example.com ansible3
+192.168.214.50 ansible4.example.com ansible4
+192.168.214.60 ansible5.example.com ansible5
+
+192.168.214.10 control.example.com control
+192.168.214.20 ansible1.example.com ansible1
+192.168.214.30 ansible2.example.com ansible2
+192.168.214.40 ansible3.example.com ansible3
+192.168.214.50 ansible4.example.com ansible4
+192.168.214.60 ansible5.example.com ansible5
+
+192.168.214.60 ansible5.example.com ansible5
+
+192.168.214.60 ansible5.example.com ansible5
+
+192.168.214.60 ansible5.example.com ansible5
+

@@ -1,0 +1,14 @@
+[server]
+ansible1.example.com
+ansible2.example.com
+
+[lamp]
+ansible3
+ansible4
+
+[monitor]
+ansible5.example.com
+
+[production:children]
+monitor
+lamp
